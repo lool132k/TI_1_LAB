@@ -1,0 +1,303 @@
+﻿unit Unit3;
+
+interface
+
+uses
+    Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+    Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Grids;
+
+type
+    TForm3 = class(TForm)
+        ComboBox1: TComboBox;
+        Label1: TLabel;
+        Button1: TButton;
+        Label2: TLabel;
+        Edit1: TEdit;
+        Label3: TLabel;
+        Edit2: TEdit;
+        Button2: TButton;
+        Button3: TButton;
+        Button4: TButton;
+        StringGrid: TStringGrid;
+        OpenDialog: TOpenDialog;
+        SaveDialog1: TSaveDialog;
+        Button5: TButton;
+        Procedure Button2Click(Sender: TObject);
+        Procedure ComboBox1Change(Sender: TObject);
+        Procedure Edit1Change(Sender: TObject);
+        Procedure Button4Click(Sender: TObject);
+        Procedure Button3Click(Sender: TObject);
+        Procedure Button1Click(Sender: TObject);
+        Procedure Button5Click(Sender: TObject);
+    Private
+        Function FilterEnglishLetters(const Text: string): string;
+        Procedure UpdateButtonsState;
+        Procedure SaveResultToFile;
+        Procedure SetupStringGridDimensions;
+        Function IsValidRowCount(RowCount: Integer): Boolean;
+
+        Function EncryptRailFence(const Text: string; NumRows: Integer): string;
+        Function DecryptRailFence(const Text: string; NumRows: Integer): string;
+    Public
+    end;
+
+var
+    Form3: TForm3;
+
+implementation
+
+{$R *.dfm}
+
+Const
+    MIN_ROWS = 1;
+    MAX_ROWS = 20;
+
+Function TForm3.FilterEnglishLetters(const Text: string): string;
+Var
+    i: Integer;
+    UpperChar: Char;
+Begin
+    Result := '';
+    For i := 1 To Length(Text) Do
+    Begin
+        UpperChar := UpperCase(Text[i])[1];
+        If CharInSet(UpperChar, ['A'..'Z']) Then
+            Result := Result + UpperChar;
+    End;
+End;
+
+Function TForm3.IsValidRowCount(RowCount: Integer): Boolean;
+Begin
+    Result := (RowCount >= MIN_ROWS) And (RowCount <= MAX_ROWS);
+End;
+
+Procedure TForm3.UpdateButtonsState;
+Var
+    RowCount: Integer;
+Begin
+    RowCount := StrToIntDef(ComboBox1.Text, 0);
+
+    If (Edit1.Text <> '') And IsValidRowCount(RowCount) Then
+    Begin
+        Button2.Enabled := True;
+        Button3.Enabled := True;
+    End
+    Else
+    Begin
+        Button2.Enabled := False;
+        Button3.Enabled := False;
+    End;
+End;
+
+Procedure TForm3.SetupStringGridDimensions;
+Begin
+    StringGrid.Height := (StringGrid.RowCount + 1) * StringGrid.DefaultRowHeight;
+    StringGrid.Width := (StringGrid.ColCount + 1) * StringGrid.DefaultColWidth;
+    StringGrid.Visible := True;
+End;
+
+Procedure TForm3.SaveResultToFile;
+Var
+    F: TextFile;
+Begin
+    If Trim(Edit2.Text) = '' Then
+        Exit;
+
+    SaveDialog1.Filter := 'Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*';
+    SaveDialog1.DefaultExt := 'txt';
+    SaveDialog1.FileName := 'result.txt';
+
+    If SaveDialog1.Execute Then
+    Begin
+        AssignFile(F, SaveDialog1.FileName);
+        Rewrite(F);
+        Try
+            Write(F, Edit2.Text);
+            ShowMessage('Файл успешно сохранён!');
+        Finally
+            CloseFile(F);
+        End;
+    End;
+End;
+
+Function TForm3.EncryptRailFence(const Text: string; NumRows: Integer): string;
+Var
+    Grid: Array Of Array Of Char;
+    Row, Col, i: Integer;
+    IsMovingDown: Boolean;
+Begin
+    If NumRows = 1 Then
+        Exit(Text);
+
+    SetLength(Grid, NumRows, Length(Text));
+
+    For Row := 0 To NumRows - 1 Do
+        For Col := 0 To Length(Text) - 1 Do
+            Grid[Row, Col] := #0;
+
+    Row := 0;
+    IsMovingDown := True;
+
+    For i := 1 To Length(Text) Do
+    Begin
+        Grid[Row, i-1] := Text[i];
+
+        If IsMovingDown Then
+            Inc(Row)
+        Else
+            Dec(Row);
+
+        If Row = NumRows - 1 Then
+            IsMovingDown := False
+        Else If Row = 0 Then
+            IsMovingDown := True;
+    End;
+
+    Result := '';
+
+    For Row := 0 To NumRows - 1 Do
+        For Col := 0 To Length(Text) - 1 Do
+            If Grid[Row, Col] <> #0 Then
+                Result := Result + Grid[Row, Col];
+End;
+
+Function TForm3.DecryptRailFence(const Text: string; NumRows: Integer): string;
+Var
+    Rail: Array Of Array Of Char;
+    Row, Col, Index: Integer;
+    IsMovingDown: Boolean;
+Begin
+    If NumRows = 1 Then
+        Exit(Text);
+
+    SetLength(Rail, NumRows, Length(Text));
+
+    For Row := 0 To NumRows - 1 Do
+        For Col := 0 To Length(Text) - 1 Do
+            Rail[Row, Col] := #0;
+
+    Row := 0;
+    IsMovingDown := True;
+
+    For Col := 0 To Length(Text) - 1 Do
+    Begin
+        Rail[Row, Col] := '*';
+
+        If IsMovingDown Then
+            Inc(Row)
+        Else
+            Dec(Row);
+
+        If Row = NumRows - 1 Then
+            IsMovingDown := False
+        Else If Row = 0 Then
+            IsMovingDown := True;
+    End;
+
+    Index := 1;
+    For Row := 0 To NumRows - 1 Do
+        For Col := 0 To Length(Text) - 1 Do
+            If Rail[Row, Col] = '*' Then
+            Begin
+                Rail[Row, Col] := Text[Index];
+                Inc(Index);
+            End;
+
+    Result := '';
+    Row := 0;
+    IsMovingDown := True;
+
+    For Col := 0 To Length(Text) - 1 Do
+    Begin
+        Result := Result + Rail[Row, Col];
+
+        If IsMovingDown Then
+            Inc(Row)
+        Else
+            Dec(Row);
+
+        If Row = NumRows - 1 Then
+            IsMovingDown := False
+        Else If Row = 0 Then
+            IsMovingDown := True;
+    End;
+End;
+
+Procedure TForm3.Button2Click(Sender: TObject);
+Var
+    EnglishText: string;
+    NumRows: Integer;
+Begin
+    EnglishText := FilterEnglishLetters(Edit1.Text);
+    NumRows := StrToIntDef(ComboBox1.Text, 0);
+
+    If (EnglishText = '') Or Not IsValidRowCount(NumRows) Then
+        Exit;
+
+    Edit2.Text := EncryptRailFence(EnglishText, NumRows);
+
+    StringGrid.Visible := False;
+    Button5.Enabled := True;
+End;
+
+Procedure TForm3.Button3Click(Sender: TObject);
+Var
+    EnglishEncrypted: string;
+    NumRows: Integer;
+Begin
+    EnglishEncrypted := FilterEnglishLetters(Edit1.Text);
+    NumRows := StrToIntDef(ComboBox1.Text, 0);
+
+    If (EnglishEncrypted = '') Or Not IsValidRowCount(NumRows) Then
+        Exit;
+
+    Edit2.Text := DecryptRailFence(EnglishEncrypted, NumRows);
+
+    StringGrid.Visible := False;
+    Button5.Enabled := True;
+End;
+
+Procedure TForm3.Button4Click(Sender: TObject);
+Begin
+    Edit1.Text := '';
+    Edit2.Text := '';
+    ComboBox1.ItemIndex := -1;
+    StringGrid.Visible := False;
+    Button5.Enabled := False;
+    UpdateButtonsState;
+End;
+
+Procedure TForm3.Button5Click(Sender: TObject);
+Begin
+    SaveResultToFile;
+End;
+
+Procedure TForm3.ComboBox1Change(Sender: TObject);
+Begin
+    UpdateButtonsState;
+End;
+
+Procedure TForm3.Edit1Change(Sender: TObject);
+Begin
+    UpdateButtonsState;
+End;
+
+Procedure TForm3.Button1Click(Sender: TObject);
+Var
+    StringList: TStringList;
+Begin
+    If OpenDialog.Execute Then
+    Begin
+        StringList := TStringList.Create;
+        Try
+            StringList.LoadFromFile(OpenDialog.FileName);
+            Edit1.Text := StringList.Text;
+            Edit1Change(Sender);
+        Finally
+            StringList.Free;
+        End;
+    End;
+End;
+
+end.
+

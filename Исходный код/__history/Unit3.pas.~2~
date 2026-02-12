@@ -1,0 +1,210 @@
+﻿unit Unit3;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Grids;
+
+type
+  TForm3 = class(TForm)
+    ComboBox1: TComboBox;
+    Label1: TLabel;
+    Button1: TButton;
+    Label2: TLabel;
+    Edit1: TEdit;
+    Label3: TLabel;
+    Edit2: TEdit;
+    Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
+    StringGrid: TStringGrid;
+    OpenDialog: TOpenDialog;
+    procedure Button2Click(Sender: TObject);
+    procedure ComboBox1Change(Sender: TObject);
+    procedure Edit1Change(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form3: TForm3;
+
+implementation
+
+{$R *.dfm}
+
+
+procedure TForm3.Button1Click(Sender: TObject);
+var
+  StringList: TStringList;
+begin
+  if OpenDialog.Execute then
+  begin
+    StringList := TStringList.Create;
+    try
+      StringList.LoadFromFile(OpenDialog.FileName);
+      Edit1.Text := StringList.Text;
+      Edit1Change(Sender);
+
+    finally
+      StringList.Free;
+    end;
+  end;
+end;
+
+procedure TForm3.Button2Click(Sender: TObject);
+var
+  NumRows: Integer;
+  Text, EnglishText: string;
+  i: Integer;
+  Row1, Col1, CharIndex: Integer;
+  Dir: Boolean;
+begin
+  Text := Edit1.Text;
+  Dir := True;
+
+  EnglishText := '';
+  for i := 1 to Length(Text) do
+  begin
+    if ((Text[i] >= 'A') and (Text[i] <= 'Z')) or
+       ((Text[i] >= 'a') and (Text[i] <= 'z')) then
+      EnglishText := EnglishText + Text[i];
+  end;
+
+  if EnglishText = '' then
+    Exit;
+
+  NumRows := StrToIntDef(ComboBox1.Text, 0);
+
+  if (NumRows < 1) or (NumRows > 20) then
+    Exit;
+
+  StringGrid.RowCount := NumRows;
+  StringGrid.ColCount := Length(EnglishText);
+
+  for var Col := 0 to StringGrid.ColCount - 1 do
+    for var Row := 0 to StringGrid.RowCount - 1 do
+      StringGrid.Cells[Col, Row] := '';
+  Row1 := 0;
+  Col1 := 0;
+  CharIndex := 1;
+  While Col1 <> Length(EnglishText) Do
+  Begin
+    StringGrid.Cells[Col1, Row1] := EnglishText[CharIndex];
+    Inc(CharIndex);
+    If Dir Then
+      Inc(Row1)
+    Else
+      Dec(Row1);
+    If Row1 = StringGrid.RowCount - 1 Then
+      Dir := False
+    Else If Row1 = 0 Then
+      Dir := True;
+
+    Inc(Col1);
+  End;
+
+
+  var EncryptedText := '';
+  for var Row := 0 to StringGrid.RowCount - 1 do
+  begin
+    for var Col := 0 to StringGrid.ColCount - 1 do
+    begin
+      if StringGrid.Cells[Col, Row] <> '' then
+        EncryptedText := EncryptedText + StringGrid.Cells[Col, Row];
+    end;
+  end;
+
+  Edit2.Text := EncryptedText;
+  StringGrid.Height := (StringGrid.RowCount + 1) * StringGrid.DefaultRowHeight;
+  StringGrid.Width := (StringGrid.ColCount + 1) * StringGrid.DefaultColWidth;
+  StringGrid.Visible := True;
+
+  Label2.Caption := Format('Текст для шифрования: %d букв(ы) англ.', [Length(EnglishText)]);
+
+  If Not StringGrid.Visible Then
+    Button3.Enabled := False
+  Else
+    Button3.Enabled := True;
+end;
+
+procedure TForm3.Button3Click(Sender: TObject);
+var
+  Row1, Col1, CharIndex: Integer;
+  Dir: Boolean;
+  DecryptedText: string;
+begin
+  DecryptedText := '';
+  Row1 := 0;
+  Col1 := 0;
+  CharIndex := 0;
+  Dir := True;
+
+  var TotalCells := 0;
+  for var Col := 0 to StringGrid.ColCount - 1 do
+    for var Row := 0 to StringGrid.RowCount - 1 do
+      if StringGrid.Cells[Col, Row] <> '' then
+        Inc(TotalCells);
+
+  While (Col1 < StringGrid.ColCount) and (Length(DecryptedText) < TotalCells) Do
+  Begin
+    if (StringGrid.Cells[Col1, Row1] <> '') then
+      DecryptedText := DecryptedText + StringGrid.Cells[Col1, Row1];
+
+    If Dir Then
+      Inc(Row1)
+    Else
+      Dec(Row1);
+
+    If Row1 = StringGrid.RowCount - 1 Then
+      Dir := False
+    Else If Row1 = 0 Then
+      Dir := True;
+
+    Inc(Col1);
+  End;
+
+  Edit1.Text := DecryptedText;
+  ShowMessage('Прочитано из таблицы (змейкой):' + #13#10 + DecryptedText);
+end;
+
+procedure TForm3.Button4Click(Sender: TObject);
+begin
+    Edit1.Text := '';
+    Edit2.Text := '';
+    ComboBox1.ItemIndex := -1;
+    Button2.Enabled := False;
+    Button3.Enabled := False;
+    StringGrid.Visible := False;
+end;
+
+procedure TForm3.ComboBox1Change(Sender: TObject);
+var
+  NumRows: Integer;
+begin
+  NumRows := StrToIntDef(ComboBox1.Text, 0);
+
+  if (NumRows >= 1) and (NumRows <= 20) and (Edit1.Text <> '') then
+    Button2.Enabled := True
+  else
+    Button2.Enabled := False;
+end;
+
+procedure TForm3.Edit1Change(Sender: TObject);
+begin
+    If Edit1.Text = '' Then
+        Button2.Enabled := False
+    else if (StrToIntDef(ComboBox1.Text, 0) >= 1) and
+            (StrToIntDef(ComboBox1.Text, 0) <= 20) Then
+        Button2.Enabled := True
+    else
+        Button2.Enabled := False;
+end;
+
+end.

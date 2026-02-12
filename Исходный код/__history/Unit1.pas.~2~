@@ -1,0 +1,177 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Grids;
+
+type
+  TForm1 = class(TForm)
+    Label2: TLabel;
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Label1: TLabel;
+    Label3: TLabel;
+    Edit3: TEdit;
+    Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
+    Button1: TButton;
+    Button5: TButton;
+    StringGrid1: TStringGrid;
+    procedure Edit1Change(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Edit2Change(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure FillVigenereGrid;
+    procedure FormCreate(Sender: TObject);
+    procedure StringGrid1DrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
+  private
+    { Private declarations }
+  public
+    SelCol, SelRow: Integer;
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.FillVigenereGrid;
+const
+  Alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+var
+  I, J: Integer;
+begin
+  StringGrid1.ColCount := 34;
+  StringGrid1.RowCount := 34;
+
+  StringGrid1.Cells[0,0] := '';
+
+  for I := 1 to 33 do
+  begin
+    StringGrid1.Cells[I,0] := Alphabet[I];
+    StringGrid1.Cells[0,I] := Alphabet[I];
+  end;
+
+  for I := 1 to 33 do
+    for J := 1 to 33 do
+      StringGrid1.Cells[J,I] :=
+        Alphabet[((I + J - 2) mod 33) + 1];
+end;
+
+procedure TForm1.StringGrid1DrawCell(Sender: TObject; ACol, ARow: Integer;
+  Rect: TRect; State: TGridDrawState);
+begin
+  if (ACol = SelCol) and (ARow = SelRow) then
+  begin
+    StringGrid1.Canvas.Brush.Color := clRed;
+    StringGrid1.Canvas.FillRect(Rect);
+    StringGrid1.Canvas.Font.Color := clWhite;
+    StringGrid1.Canvas.TextRect(Rect,
+      Rect.Left + 4, Rect.Top + 2,
+      StringGrid1.Cells[ACol, ARow]);
+  end;
+end;
+
+
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+    FillVigenereGrid;
+    StringGrid1.DefaultDrawing := True;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+Var
+  StKey, StInput, StRes: String;
+  InpKey, I, J, P, K: Integer;
+Const
+  Alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+Begin
+    StKey := AnsiUpperCase(Edit1.Text);
+    StInput := AnsiUpperCase(Edit2.Text);
+    InpKey := Length(StKey);
+    If InpKey < Length(StInput) Then
+    Begin
+        Setlength(StKey, Length(StInput));
+        I := InpKey + 1;
+        J := 1;
+        While I <= Length(StInput) Do
+        Begin
+            StKey[I] := StKey[J];
+            If J = InpKey Then
+                J := 1
+            Else
+                Inc(J);
+            Inc(I);
+        End;
+    End;
+    I := 1;
+    SetLength(StRes, Length(StInput));
+
+    While I <= Length(StInput) Do
+    Begin
+       P := Pos(StInput[I], Alphabet) - 1;
+       K := Pos(StKey[I], Alphabet) - 1;
+       If (P < 0) Or (K < 0) Then
+           StRes[I] := StInput[I]
+       Else
+    Begin
+       SelRow := P + 1; // строка
+       SelCol := K + 1; // столбец
+
+        StRes[I] := Alphabet[((P + K) mod 33) + 1];
+        StringGrid1.Repaint; // обновить подсветку
+    End;
+
+       Inc(I);
+    End;
+
+Edit3.Text := StRes;
+End;
+
+
+procedure TForm1.Button4Click(Sender: TObject);
+begin
+    Button2.Enabled := False;
+    Button3.Enabled := False;
+    Edit1.Text := '';
+    Edit2.Text := '';
+    Edit3.Text := '';
+    Button5.Enabled := False;
+end;
+
+procedure TForm1.Edit1Change(Sender: TObject);
+begin
+    If (Edit1.Text <> '') And (Edit2.Text <> '') Then
+    Begin
+        Button2.Enabled := True;
+        Button3.Enabled := True;
+    End
+    Else
+    Begin
+       Button3.Enabled := False;
+       Button2.Enabled := False
+    End;
+
+end;
+
+procedure TForm1.Edit2Change(Sender: TObject);
+begin
+    If (Edit1.Text <> '') And (Edit2.Text <> '') Then
+    Begin
+        Button2.Enabled := True;
+        Button3.Enabled := True;
+    End
+    Else
+    Begin
+       Button3.Enabled := False;
+       Button2.Enabled := False
+    End;
+end;
+
+end.

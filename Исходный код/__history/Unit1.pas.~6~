@@ -1,0 +1,292 @@
+﻿unit Unit1;
+
+interface
+
+uses
+    Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+    Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Grids;
+
+type
+    TForm1 = class(TForm)
+        Label2: TLabel;
+        Edit1: TEdit;
+        Edit2: TEdit;
+        Label1: TLabel;
+        Label3: TLabel;
+        Edit3: TEdit;
+        Button2: TButton;
+        Button3: TButton;
+        Button4: TButton;
+        Button1: TButton;
+        Button5: TButton;
+        StringGrid1: TStringGrid;
+        OpenDialog: TOpenDialog;
+        SaveDialog1: TSaveDialog;
+        StringGrid2: TStringGrid;
+        Procedure Edit1Change(Sender: TObject);
+        Procedure Button2Click(Sender: TObject);
+        Procedure Button3Click(Sender: TObject);
+        Procedure Edit2Change(Sender: TObject);
+        Procedure Button4Click(Sender: TObject);
+        Procedure FillVigenereGrid;
+        Procedure FormCreate(Sender: TObject);
+        Procedure Button1Click(Sender: TObject);
+        Procedure Button5Click(Sender: TObject);
+    Private
+        { Private declarations }
+        Function FilterRussianLetters(const Text: string): string;
+        Function ExtendKeyToLength(const Key: string; TargetLength: Integer): string;
+        Function VigenereEncrypt(const InputText, Key: string): string;
+        Function VigenereDecrypt(const InputText, Key: string): string;
+        Procedure UpdateStringGrid2(const InputText, Key: string);
+        Procedure UpdateButtonsState;
+        Procedure SaveResultToFile;
+    Public
+        { Public declarations }
+    end;
+
+var
+    Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+const
+    Alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+    AlphabetLength = 33;
+
+Procedure TForm1.FillVigenereGrid;
+Var
+    I, J: Integer;
+Begin
+    StringGrid1.ColCount := AlphabetLength + 1;
+    StringGrid1.RowCount := AlphabetLength + 1;
+
+    StringGrid1.Cells[0,0] := '';
+
+    For I := 1 To AlphabetLength Do
+    Begin
+        StringGrid1.Cells[I,0] := Alphabet[I];
+        StringGrid1.Cells[0,I] := Alphabet[I];
+    End;
+
+    For I := 1 To AlphabetLength Do
+        For J := 1 To AlphabetLength Do
+            StringGrid1.Cells[J,I] :=
+                Alphabet[((I + J - 2) Mod AlphabetLength) + 1];
+End;
+
+Procedure TForm1.FormCreate(Sender: TObject);
+Begin
+    FillVigenereGrid;
+    StringGrid1.DefaultDrawing := True;
+End;
+
+Function TForm1.FilterRussianLetters(const Text: string): string;
+Var
+    i: Integer;
+    UpperChar: Char;
+Begin
+    Result := '';
+    For i := 1 To Length(Text) Do
+    Begin
+        UpperChar := AnsiUpperCase(Text[i])[1];
+        If Pos(UpperChar, Alphabet) > 0 Then
+            Result := Result + UpperChar;
+    End;
+End;
+
+Function TForm1.ExtendKeyToLength(const Key: string; TargetLength: Integer): string;
+Var
+    I, KeyPos: Integer;
+    KeyLength: Integer;
+Begin
+    Result := Key;
+    KeyLength := Length(Key);
+
+    If KeyLength >= TargetLength Then
+        Exit;
+
+    SetLength(Result, TargetLength);
+    KeyPos := 1;
+
+    For I := KeyLength + 1 To TargetLength Do
+    Begin
+        Result[I] := Key[KeyPos];
+        KeyPos := KeyPos Mod KeyLength + 1;
+    End;
+End;
+
+Function TForm1.VigenereEncrypt(const InputText, Key: string): string;
+Var
+    I: Integer;
+    InputIndex, KeyIndex: Integer;
+    FilteredText, ExtendedKey: string;
+Begin
+    Result := '';
+    FilteredText := FilterRussianLetters(InputText);
+
+    If (FilteredText = '') Or (Key = '') Then
+        Exit;
+
+    ExtendedKey := ExtendKeyToLength(Key, Length(FilteredText));
+    SetLength(Result, Length(FilteredText));
+
+    For I := 1 To Length(FilteredText) Do
+    Begin
+        InputIndex := Pos(FilteredText[I], Alphabet) - 1;
+        KeyIndex := Pos(ExtendedKey[I], Alphabet) - 1;
+        Result[I] := Alphabet[((InputIndex + KeyIndex) Mod AlphabetLength) + 1];
+    End;
+End;
+
+Function TForm1.VigenereDecrypt(const InputText, Key: string): string;
+Var
+    I: Integer;
+    InputIndex, KeyIndex: Integer;
+    FilteredText, ExtendedKey: string;
+Begin
+    Result := '';
+    FilteredText := FilterRussianLetters(InputText);
+
+    If (FilteredText = '') Or (Key = '') Then
+        Exit;
+
+    ExtendedKey := ExtendKeyToLength(Key, Length(FilteredText));
+    SetLength(Result, Length(FilteredText));
+
+    For I := 1 To Length(FilteredText) Do
+    Begin
+        InputIndex := Pos(FilteredText[I], Alphabet) - 1;
+        KeyIndex := Pos(ExtendedKey[I], Alphabet) - 1;
+        Result[I] := Alphabet[((InputIndex - KeyIndex + AlphabetLength) Mod AlphabetLength) + 1];
+    End;
+End;
+
+Procedure TForm1.UpdateStringGrid2(const InputText, Key: string);
+Var
+    I: Integer;
+    FilteredText, ExtendedKey: string;
+Begin
+    FilteredText := FilterRussianLetters(InputText);
+
+    If (FilteredText = '') Or (Key = '') Then
+    Begin
+        StringGrid2.ColCount := 1;
+        Exit;
+    End;
+
+    ExtendedKey := ExtendKeyToLength(Key, Length(FilteredText));
+    StringGrid2.ColCount := Length(FilteredText);
+    StringGrid2.Width := Round((3.5 + Length(FilteredText)) * 18);
+
+    For I := 1 To Length(FilteredText) Do
+    Begin
+        StringGrid2.Cells[I - 1, 0] := FilteredText[I];
+        StringGrid2.Cells[I - 1, 1] := ExtendedKey[I];
+    End;
+End;
+
+Procedure TForm1.UpdateButtonsState;
+Begin
+    Button2.Enabled := (Edit1.Text <> '') And (Edit2.Text <> '');
+    Button3.Enabled := (Edit1.Text <> '') And (Edit2.Text <> '');
+    Button5.Enabled := Trim(Edit3.Text) <> '';
+End;
+
+Procedure TForm1.SaveResultToFile;
+Var
+    F: TextFile;
+Begin
+    If Trim(Edit3.Text) = '' Then
+        Exit;
+
+    SaveDialog1.Filter := 'Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*';
+    SaveDialog1.DefaultExt := 'txt';
+    SaveDialog1.FileName := 'result.txt';
+
+    If SaveDialog1.Execute Then
+    Begin
+        AssignFile(F, SaveDialog1.FileName);
+        Rewrite(F);
+        Try
+            Write(F, Edit3.Text);
+            ShowMessage('Файл успешно сохранён!');
+        Finally
+            CloseFile(F);
+        End;
+    End;
+End;
+
+Procedure TForm1.Button1Click(Sender: TObject);
+Var
+    StringList: TStringList;
+Begin
+    If OpenDialog.Execute Then
+    Begin
+        StringList := TStringList.Create;
+        Try
+            StringList.LoadFromFile(OpenDialog.FileName);
+            Edit2.Text := StringList.Text;
+            Edit2Change(Sender);
+        Finally
+            StringList.Free;
+        End;
+    End;
+End;
+
+Procedure TForm1.Button2Click(Sender: TObject);
+Var
+    FilteredKey: string;
+Begin
+    FilteredKey := FilterRussianLetters(AnsiUpperCase(Edit1.Text));
+
+    If FilteredKey = '' Then
+        Exit;
+
+    Edit3.Text := VigenereEncrypt(Edit2.Text, FilteredKey);
+    UpdateStringGrid2(Edit2.Text, FilteredKey);
+    UpdateButtonsState;
+End;
+
+Procedure TForm1.Button3Click(Sender: TObject);
+Var
+    FilteredKey: string;
+Begin
+    FilteredKey := FilterRussianLetters(AnsiUpperCase(Edit1.Text));
+
+    If FilteredKey = '' Then
+        Exit;
+
+    Edit3.Text := VigenereDecrypt(Edit2.Text, FilteredKey);
+    UpdateStringGrid2(Edit2.Text, FilteredKey);
+    UpdateButtonsState;
+End;
+
+Procedure TForm1.Button4Click(Sender: TObject);
+Begin
+    Edit1.Text := '';
+    Edit2.Text := '';
+    Edit3.Text := '';
+    StringGrid2.ColCount := 1;
+    UpdateButtonsState;
+    Label1.Caption := 'Результат';
+End;
+
+Procedure TForm1.Button5Click(Sender: TObject);
+Begin
+    SaveResultToFile;
+End;
+
+Procedure TForm1.Edit1Change(Sender: TObject);
+Begin
+    UpdateButtonsState;
+End;
+
+Procedure TForm1.Edit2Change(Sender: TObject);
+Begin
+    UpdateButtonsState;
+End;
+
+End.
